@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Discord Analytics Agent</title>
+<link rel="stylesheet" href="styles.css" />
+<script src="vendor/chart.umd.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <h1>Discord Analytics</h1>
+      <label for="server-select">Server</label>
+      <select id="server-select"></select>
+
+      <h2>Sample messages</h2>
+      <div id="messages-panel" class="panel">
+        <div class="empty-state">Pick a server to load messages.</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section class="chat-section">
+        <h2>Ask the agent</h2>
+        <div id="chat-log" class="chat-log">
+          <div class="empty-state">Try: "which channels had the most messages last month?" or "chart total messages per day".</div>
+        </div>
+        <form id="chat-form">
+          <input id="chat-input" type="text" placeholder="Ask a question about the data..." autocomplete="off" />
+          <button type="submit">Send</button>
+        </form>
+      </section>
+
+      <section class="chart-section">
+        <div class="chart-header">
+          <h2>Latest chart</h2>
+          <button id="pin-button" disabled>Pin to dashboard</button>
+        </div>
+        <div id="chart-empty" class="empty-state">Ask the agent to chart something and it'll show up here.</div>
+        <canvas id="latest-chart" height="220" style="display:none"></canvas>
+      </section>
+
+      <section class="dashboard-section">
+        <h2>Pinned dashboard</h2>
+        <div id="pins-grid" class="pins-grid">
+          <div class="empty-state">No pinned charts yet.</div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+# Data Dictionary
+
+## servers.csv
+- server_id: Unique identifier for the server
+- server_name: Name of the server
+- owner_id: User ID of the server owner
+- creation_date: Timestamp when server was created
+- region: Server region (us-east, us-west, europe, asia)
+- verification_level: 0=none, 1=low, 2=medium, 3=high
+- default_message_notifications: 0=all messages, 1=only mentions
+- explicit_content_filter: 0=disabled, 1=members without roles, 2=all members
+- system_channel_id: ID of system channel (if any)
+- afk_channel_id: ID of AFK voice channel (if any)
+- afk_timeout: Timeout in seconds for AFK
+- widget_enabled: Whether server widget is enabled
+- premium_tier: 0=none, 1=tier1, 2=tier2, 3=tier3
+- premium_subscription_count: Number of boosts
+- approximate_member_count: Approximate number of members
+- approximate_presence_count: Approximate online members
+
+## channels.csv
+- channel_id: Unique channel ID
+- server_id: Foreign key to servers
+- channel_name: Name of the channel
+- channel_type: 'text' or 'voice'
+- topic: Channel topic (if any)
+- nsfw: Whether channel is NSFW
+- rate_limit_per_user: Slowmode in seconds
+- position: Display order
+
+## members.csv
+- user_id: Unique user ID (per server)
+- server_id: Foreign key to servers
+- username: Username (without discriminator)
+- display_name: Server nickname if set, else username
+- discriminator: 4-digit discriminator
+- avatar_hash: Hash of avatar (if any)
+- is_bot: True if user is a bot
+- join_date: When user joined the server
+- last_active: Last known activity timestamp
+- roles: Comma-separated list of role names
+- messages_sent: Total messages sent by user
+- voice_minutes: Total voice minutes spent
+- is_owner: True if user is server owner
+
+## daily_stats.csv
+- server_id: Foreign key to servers
+- date: Date (YYYY-MM-DD)
+- total_messages: Total messages sent on that day
+- new_members: Number of new members joining
+- active_members: Estimated active members (sent at least one message)
+- total_members: Cumulative member count at end of day
+- day_of_week: 0=Monday ... 6=Sunday
+- is_weekend: 1 if weekend, else 0
+
+## channel_daily_stats.csv
+- channel_id: Foreign key to channels
+- server_id: Foreign key to servers
+- date: Date (YYYY-MM-DD)
+- message_count: Messages sent in that channel on that day
+- active_users: Estimated unique users active in that channel
+
+## messages_sample.csv
+- message_id: Unique message ID
+- server_id: Foreign key to servers
+- channel_id: Foreign key to channels
+- user_id: Foreign key to members (user)
+- timestamp: When message was sent
+- content: Text content of message
+- has_attachment: True if message has attachment
+- has_embed: True if message has embed
+- reaction_count: Number of reactions
+- is_pinned: True if message is pinned
+- length: Character length of content

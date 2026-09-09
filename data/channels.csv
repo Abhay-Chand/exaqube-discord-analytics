@@ -1,0 +1,63 @@
+channel_id,server_id,channel_name,channel_type,topic,nsfw,rate_limit_per_user,position
+server_001_text_1,server_001,Surface-general,text,Role movie win.,False,2,0
+server_001_text_2,server_001,Human,text,Need stop peace technology.,False,2,1
+server_001_voice_1,server_001,Participant Voice,voice,,False,0,2
+server_002_text_1,server_002,Dark-general,text,Animal direction eye bag.,False,0,0
+server_002_text_2,server_002,Early,text,Herself law street class.,False,0,1
+server_002_text_3,server_002,Hear,text,Prove reduce raise author play.,False,0,2
+server_002_text_4,server_002,None,text,,False,0,3
+server_002_voice_1,server_002,Shoulder Voice,voice,,False,0,4
+server_002_voice_2,server_002,Election Voice,voice,,False,0,5
+server_002_voice_3,server_002,Common Voice,voice,,False,0,6
+server_003_text_1,server_003,Maintain-general,text,Establish understand read detail food shoulder.,True,0,0
+server_003_text_2,server_003,Arrive,text,Start source husband at tree.,False,0,1
+server_003_text_3,server_003,Our,text,Defense material those poor central cause.,False,0,2
+server_003_text_4,server_003,Size,text,Much section investment on gun young catch.,True,10,3
+server_003_text_5,server_003,Minute,text,Sense technology check civil.,False,0,4
+server_003_voice_1,server_003,Response Voice,voice,,False,0,5
+server_003_voice_2,server_003,Knowledge Voice,voice,,False,0,6
+server_003_voice_3,server_003,Pick Voice,voice,,False,0,7
+server_004_text_1,server_004,Attack-general,text,,False,0,0
+server_004_text_2,server_004,Image,text,Other life edge network wall quite.,False,0,1
+server_004_text_3,server_004,Building,text,,False,0,2
+server_004_text_4,server_004,Rest,text,Seem shoulder future fall citizen about reveal.,True,5,3
+server_004_text_5,server_004,Serve,text,Will seven medical blood personal.,False,0,4
+server_004_voice_1,server_004,Thought Voice,voice,,False,0,5
+server_004_voice_2,server_004,Purpose Voice,voice,,False,0,6
+server_004_voice_3,server_004,Movement Voice,voice,,False,0,7
+server_005_text_1,server_005,Politics-general,text,Check several much single morning.,False,0,0
+server_005_text_2,server_005,A,text,,False,0,1
+server_005_text_3,server_005,Place,text,Major born guy world southern dream.,True,0,2
+server_005_text_4,server_005,Effect,text,Water beat magazine attorney set she campaign.,True,0,3
+server_005_text_5,server_005,May,text,,False,0,4
+server_005_text_6,server_005,Your,text,,False,10,5
+server_005_voice_1,server_005,Often Voice,voice,,False,0,6
+server_005_voice_2,server_005,Company Voice,voice,,False,0,7
+server_005_voice_3,server_005,Evidence Voice,voice,,False,0,8
+server_006_text_1,server_006,News-general,text,,True,2,0
+server_006_text_2,server_006,Turn,text,,False,0,1
+server_006_voice_1,server_006,Policy Voice,voice,,False,0,2
+server_006_voice_2,server_006,Land Voice,voice,,False,0,3
+server_007_text_1,server_007,Development-general,text,,False,0,0
+server_007_text_2,server_007,Woman,text,Sense ready require human public health tonight.,False,0,1
+server_007_voice_1,server_007,Live Voice,voice,,False,0,2
+server_007_voice_2,server_007,Camera Voice,voice,,False,0,3
+server_007_voice_3,server_007,End Voice,voice,,False,0,4
+server_008_text_1,server_008,Down-general,text,Full open discover detail.,False,0,0
+server_008_text_2,server_008,Avoid,text,,False,0,1
+server_008_text_3,server_008,Second,text,Arrive attack all form method everything magazine much.,False,2,2
+server_008_text_4,server_008,Several,text,,False,0,3
+server_008_text_5,server_008,Worry,text,Office drug list imagine behind probably great.,False,0,4
+server_008_text_6,server_008,Item,text,,True,0,5
+server_008_voice_1,server_008,Manage Voice,voice,,False,0,6
+server_008_voice_2,server_008,Treat Voice,voice,,False,0,7
+server_008_voice_3,server_008,Shoulder Voice,voice,,False,0,8
+server_009_text_1,server_009,Arm-general,text,Art rock song body.,False,5,0
+server_009_text_2,server_009,Dark,text,,True,0,1
+server_009_voice_1,server_009,Customer Voice,voice,,False,0,2
+server_010_text_1,server_010,Not-general,text,Cell contain leg themselves away space task.,True,0,0
+server_010_text_2,server_010,Billion,text,Present music address.,False,0,1
+server_010_text_3,server_010,Better,text,Coach magazine degree husband around.,False,0,2
+server_010_text_4,server_010,Hundred,text,World enter six.,False,0,3
+server_010_voice_1,server_010,Look Voice,voice,,False,0,4
+server_010_voice_2,server_010,Feeling Voice,voice,,False,0,5

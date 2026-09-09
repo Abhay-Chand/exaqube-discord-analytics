@@ -1,0 +1,11 @@
+server_id,server_name,owner_id,creation_date,region,verification_level,default_message_notifications,explicit_content_filter,system_channel_id,afk_channel_id,afk_timeout,widget_enabled,premium_tier,premium_subscription_count,approximate_member_count,approximate_presence_count
+server_001,"Rodriguez, Figueroa and Sanchez Discord",owner_001,2025-08-23 17:40:55,us-east,0,1,0,system_001,afk_001,3600.0,True,3,1,65,21
+server_002,Doyle Ltd Discord,owner_002,2025-03-13 07:38:45,us-west,0,0,2,system_002,afk_002,,False,0,5,407,64
+server_003,"Mcclain, Miller and Henderson Discord",owner_003,2025-04-29 13:09:24,europe,1,0,1,,,,False,2,1,423,68
+server_004,Davis and Sons Discord,owner_004,2025-07-14 15:48:01,us-east,3,0,2,system_004,afk_004,900.0,True,0,1,388,39
+server_005,"Guzman, Hoffman and Baldwin Discord",owner_005,2025-10-14 15:18:41,europe,0,0,0,system_005,,300.0,False,2,6,393,44
+server_006,"Gardner, Robinson and Lawrence Discord",owner_006,2025-09-16 23:13:53,us-east,1,0,0,system_006,,3600.0,True,2,1,167,14
+server_007,Blake and Sons Discord,owner_007,2025-10-27 01:21:46,europe,3,1,0,system_007,afk_007,900.0,True,3,12,379,68
+server_008,"Henderson, Ramirez and Lewis Discord",owner_008,2025-02-11 21:27:07,europe,1,0,2,system_008,,3600.0,False,2,7,120,75
+server_009,Garcia-James Discord,owner_009,2025-06-28 01:41:35,us-east,0,0,0,system_009,afk_009,,True,3,12,355,69
+server_010,Abbott-Munoz Discord,owner_010,2025-07-11 21:29:43,europe,0,0,2,system_010,afk_010,900.0,True,2,13,130,68

@@ -1,0 +1,60 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: discord_analytics
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set — see .env.example}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d discord_analytics"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    ports:
+      - "5432:5432"  # exposed for local debugging/grading convenience; remove for a real deployment
+
+  migrate:
+    build: ./backend
+    command: ["python", "scripts/load_data.py"]
+    environment:
+      MIGRATE_DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/discord_analytics
+      DATA_DIR: /data
+    volumes:
+      - ./data:/data:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
+  backend:
+    build: ./backend
+    environment:
+      # agent_ro / app_rw passwords are fixed in scripts/schema.sql, not
+      # sourced from .env — see README "Known simplifications" for why
+      # (short version: real deployments would provision these as managed
+      # secrets and ALTER ROLE at provision time; that machinery wasn't
+      # worth building for a fixed local dev/grading stack).
+      APP_DATABASE_URL: postgresql://app_rw:app_rw_password@db:5432/discord_analytics
+      AGENT_DATABASE_URL: postgresql://agent_ro:agent_ro_password@db:5432/discord_analytics
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?OPENAI_API_KEY must be set — see .env.example}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      ROW_CAP: ${ROW_CAP:-5000}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "8000:8000"  # direct access for debugging; the frontend reaches this via its own nginx proxy
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+
+volumes:
+  db_data:

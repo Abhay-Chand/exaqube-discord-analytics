@@ -1,0 +1,42 @@
+:root {
+  --bg: #14151a; --panel: #1e1f26; --border: #2c2e38; --text: #e6e6ea;
+  --muted: #8a8d99; --accent: #5b8def; --error: #e5534b; --ok: #3fb950;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, Segoe UI, Roboto, sans-serif; }
+.layout { display: flex; min-height: 100vh; }
+.sidebar { width: 300px; padding: 16px; border-right: 1px solid var(--border); flex-shrink: 0; }
+.sidebar h1 { font-size: 16px; margin: 0 0 16px; }
+.sidebar h2 { font-size: 13px; color: var(--muted); text-transform: uppercase; margin: 20px 0 8px; }
+select, input, button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px; font-size: 14px; }
+select { width: 100%; }
+.main { flex: 1; padding: 16px; display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 8px; max-height: 300px; overflow: auto; font-size: 12px; }
+.msg-row { padding: 6px 4px; border-bottom: 1px solid var(--border); }
+.msg-row .meta { color: var(--muted); font-size: 11px; }
+.empty-state { color: var(--muted); font-size: 13px; padding: 12px; }
+.error-state { color: var(--error); font-size: 13px; padding: 12px; }
+
+.chat-log { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px; height: 320px; overflow-y: auto; font-size: 14px; }
+.chat-line { margin-bottom: 10px; }
+.chat-line.user { color: var(--text); font-weight: 600; }
+.chat-line.assistant { color: var(--text); }
+.chat-line.tool-call { color: var(--accent); font-size: 12px; font-family: monospace; }
+.chat-line.tool-result { color: var(--muted); font-size: 12px; }
+.chat-line.tool-error { color: var(--error); font-size: 12px; }
+.chat-line.status { color: var(--muted); font-size: 12px; font-style: italic; }
+
+#chat-form { display: flex; gap: 8px; margin-top: 10px; }
+#chat-input { flex: 1; }
+
+.chart-header { display: flex; justify-content: space-between; align-items: center; }
+.chart-header h2 { margin: 0; }
+#latest-chart { max-height: 260px; }
+
+.pins-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.pin-card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
+.pin-card h3 { font-size: 13px; margin: 0 0 6px; }
+.pin-card .pin-actions { margin-top: 6px; display: flex; gap: 6px; }
+.pin-card button { font-size: 11px; padding: 4px 8px; }
+
+h2 { font-size: 15px; margin: 0 0 8px; }
