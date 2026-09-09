@@ -38,14 +38,45 @@ class ChatSession:
     keyed by session_id, in the route layer — see the module docstring in
     plugins/base.py (ArtifactStore) for why this is intentionally not
     persisted: pins copy out what they need, so losing this on restart
-    only loses in-flight chat context, not anything durable."""
+    only loses in-flight chat context, not anything durable.
+
+    `lock` serializes turns: session.messages is a plain mutable list with
+    no protection of its own, so two concurrent requests against the same
+    session_id (a user sending a second message before the first finishes)
+    would otherwise race on appending to and reading from it — each turn's
+    tool calls landing in a history the other turn is simultaneously
+    mutating. Found this exact interleaving live during testing (duplicate
+    chart calls with subtly different titles, from two turns' histories
+    getting tangled together) — this lock is the fix."""
 
     def __init__(self):
         self.messages: list[Message] = [Message(role="system", content=SYSTEM_PROMPT)]
         self.store = ArtifactStore()
+        self.lock = asyncio.Lock()
 
 
 async def run_turn(
+    session: ChatSession,
+    user_text: str,
+    registry: dict,
+    provider: LLMProvider,
+    db_pool,
+    row_cap: int,
+    trace_id: str,
+) -> AsyncIterator[dict]:
+    """Public entry point — just serializes access to the session via
+    `session.lock`, then delegates to `_run_turn_locked` for the actual
+    agent loop. A second message to a session already mid-turn waits here
+    (and gets a `queued` status event so the client can show that, rather
+    than looking like it silently hung) instead of racing the first."""
+    if session.lock.locked():
+        yield ev("status", stage="queued")
+    async with session.lock:
+        async for event in _run_turn_locked(session, user_text, registry, provider, db_pool, row_cap, trace_id):
+            yield event
+
+
+async def _run_turn_locked(
     session: ChatSession,
     user_text: str,
     registry: dict,

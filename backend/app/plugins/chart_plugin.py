@@ -9,23 +9,27 @@ from app.plugins.base import Plugin, PluginContext, PluginError, PluginResult
 from app.plugins.registry import register_plugin
 
 MAX_CATEGORIES = 200
+MAX_SCATTER_POINTS = 2000  # scatter plots raw pairs, not aggregates — cap so a 5000-row result can't produce an unbounded payload
 
 
 class ChartArgs(BaseModel):
     ref_id: str = Field(..., description="ref_id of a previous 'query' plugin result to chart.")
     chart_type: Literal["line", "bar", "scatter"] = Field(..., description="Chart type to produce.")
     x_field: str = Field(..., description="Column from the query result to use as the x-axis / category.")
-    y_field: str = Field(..., description="Column to aggregate for the y-axis.")
+    y_field: str = Field(..., description="Column to aggregate for the y-axis (line/bar) or plot directly (scatter).")
     series_field: str | None = Field(
         default=None, description="Optional column to split into multiple series (e.g. one line per server)."
     )
     agg: Literal["sum", "avg", "count", "max", "min"] = Field(
-        default="sum", description="How to aggregate y_field per x (and per series, if given)."
+        default="sum",
+        description="How to aggregate y_field per x (and per series, if given). Ignored for chart_type='scatter' — "
+        "scatter plots every row as its own (x, y) point, since aggregating would defeat the point of looking "
+        "for a relationship between two variables.",
     )
     sort_by_value: bool = Field(
-        default=False, description="Sort categories by aggregated value descending instead of by x. Use for top-N bar charts."
+        default=False, description="Sort categories by aggregated value descending instead of by x. Use for top-N bar charts. Ignored for scatter."
     )
-    top_n: int | None = Field(default=None, ge=1, le=MAX_CATEGORIES, description="Keep only the top N categories after sorting.")
+    top_n: int | None = Field(default=None, ge=1, le=MAX_CATEGORIES, description="Keep only the top N categories after sorting. Ignored for scatter.")
     title: str = Field(default="", description="Chart title.")
 
     @field_validator("y_field")
@@ -41,9 +45,10 @@ class ChartPlugin(Plugin):
     name = "chart"
     description = (
         "Turn a previous query's result (given its ref_id) into a chart. Handles time series (line), "
-        "top-N comparisons (bar), and distributions/relationships (scatter). Aggregates y_field grouped by "
-        "x_field (and optionally series_field) using the given aggregation. Returns a chart spec the frontend "
-        "renders — pin it to the dashboard to keep it live."
+        "top-N comparisons (bar) — both aggregate y_field grouped by x_field using the given agg — and "
+        "relationships/distributions (scatter), which plots every row as its own raw (x_field, y_field) point "
+        "with no aggregation, since aggregating would hide the relationship you're trying to see. Returns a "
+        "chart spec the frontend renders — pin it to the dashboard to keep it live."
     )
     input_model = ChartArgs
     consumes = "result_set"
@@ -76,6 +81,73 @@ class ChartPlugin(Plugin):
                 retryable=True,
             )
 
+        if args.chart_type == "scatter":
+            chart_spec = self._build_scatter(args, rows)
+            point_count = sum(len(s["points"]) for s in chart_spec["series"])
+            ref = ctx.store.put(kind="chart_spec", full_data=chart_spec, preview=chart_spec, row_count=point_count)
+            display_text = (
+                f"Built a scatter chart '{chart_spec['title']}' with {point_count} point(s) "
+                f"across {len(chart_spec['series'])} series."
+            )
+            return PluginResult(ref=ref, display_text=display_text)
+
+        chart_spec = self._build_aggregated(args, rows)
+        ref = ctx.store.put(
+            kind="chart_spec", full_data=chart_spec, preview=chart_spec, row_count=len(chart_spec["categories"])
+        )
+        display_text = (
+            f"Built a {args.chart_type} chart '{chart_spec['title']}' with {len(chart_spec['categories'])} "
+            f"categor{'y' if len(chart_spec['categories']) == 1 else 'ies'} and {len(chart_spec['series'])} series."
+        )
+        return PluginResult(ref=ref, display_text=display_text)
+
+    @staticmethod
+    def _build_scatter(args: ChartArgs, rows: list[dict]) -> dict:
+        """No aggregation, no bucketing by x — every row becomes one (x, y)
+        point. Grouping by series_field is still honoured (e.g. one colour
+        per server), but within a series the points are exactly the rows,
+        not a sum/avg of them."""
+        by_series: dict[str, list[dict]] = defaultdict(list)
+        skipped_non_numeric = 0
+        for row in rows:
+            series = str(row.get(args.series_field)) if args.series_field else "value"
+            try:
+                x = float(row.get(args.x_field))
+                y = float(row.get(args.y_field))
+            except (TypeError, ValueError):
+                skipped_non_numeric += 1
+                continue
+            by_series[series].append({"x": x, "y": y})
+
+        total = sum(len(pts) for pts in by_series.values())
+        if total > MAX_SCATTER_POINTS:
+            # Evenly downsample each series rather than truncating one
+            # series to zero — keeps the shape of the relationship visible
+            # instead of just chopping off whatever sorted last. ceil()
+            # (not round()) guarantees the result is at or under the cap,
+            # not slightly over it.
+            import math
+            for series in by_series:
+                pts = by_series[series]
+                target = max(1, round(len(pts) * MAX_SCATTER_POINTS / total))
+                step = max(1, math.ceil(len(pts) / target))
+                by_series[series] = pts[::step]
+
+        series_out = [{"name": name, "points": pts} for name, pts in sorted(by_series.items())]
+        title = args.title or f"{args.y_field} vs {args.x_field}"
+        return {
+            "chart_type": "scatter",
+            "title": title,
+            "x_label": args.x_field,
+            "y_label": args.y_field,
+            "categories": [],
+            "series": series_out,
+            "source_ref_id": args.ref_id,
+            "note": f"{skipped_non_numeric} row(s) skipped (non-numeric)" if skipped_non_numeric else None,
+        }
+
+    @staticmethod
+    def _build_aggregated(args: ChartArgs, rows: list[dict]) -> dict:
         grouped: dict[tuple, list[float]] = defaultdict(list)
         for row in rows:
             x = row.get(args.x_field)
@@ -116,7 +188,7 @@ class ChartPlugin(Plugin):
             for s in series_names
         ]
 
-        chart_spec = {
+        return {
             "chart_type": args.chart_type,
             "title": args.title or f"{args.agg}({args.y_field}) by {args.x_field}",
             "x_label": args.x_field,
@@ -125,10 +197,3 @@ class ChartPlugin(Plugin):
             "series": series_out,
             "source_ref_id": args.ref_id,
         }
-
-        ref = ctx.store.put(kind="chart_spec", full_data=chart_spec, preview=chart_spec, row_count=len(categories))
-        display_text = (
-            f"Built a {args.chart_type} chart '{chart_spec['title']}' with {len(categories)} "
-            f"categor{'y' if len(categories)==1 else 'ies'} and {len(series_out)} series."
-        )
-        return PluginResult(ref=ref, display_text=display_text)

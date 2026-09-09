@@ -78,39 +78,44 @@ function renderChart(spec) {
   const canvas = $("latest-chart");
   canvas.style.display = "block";
   if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(canvas.getContext("2d"), buildChartConfig(spec));
+  $("pin-button").disabled = !(lastQuerySql && lastChartArgs);
+}
 
-  const type = spec.chart_type === "scatter" ? "scatter" : (spec.chart_type === "bar" ? "bar" : "line");
-  chartInstance = new Chart(canvas.getContext("2d"), {
+function renderMiniChart(canvas, spec) {
+  const config = buildChartConfig(spec);
+  config.options.plugins.legend.display = false;
+  new Chart(canvas.getContext("2d"), config);
+}
+
+// scatter carries its own {x,y} pairs per point and needs no shared category
+// axis; line/bar are aligned arrays against spec.categories. Same builder for
+// both the main chart and the pinned-dashboard mini charts, so they can't drift.
+function buildChartConfig(spec) {
+  const isScatter = spec.chart_type === "scatter";
+  const type = isScatter ? "scatter" : (spec.chart_type === "bar" ? "bar" : "line");
+  return {
     type,
     data: {
-      labels: spec.categories,
+      labels: isScatter ? undefined : spec.categories,
       datasets: spec.series.map(s => ({
         label: s.name,
-        data: s.values,
+        data: isScatter ? s.points : s.values,
         borderWidth: 2,
         tension: 0.25,
+        showLine: false,
+        pointRadius: isScatter ? 3 : undefined,
       })),
     },
     options: {
       responsive: true,
       plugins: { title: { display: true, text: spec.title, color: "#e6e6ea" }, legend: { labels: { color: "#e6e6ea" } } },
       scales: {
-        x: { title: { display: true, text: spec.x_label, color: "#8a8d99" }, ticks: { color: "#8a8d99" } },
+        x: { title: { display: true, text: spec.x_label, color: "#8a8d99" }, ticks: { color: "#8a8d99", maxTicksLimit: 6 } },
         y: { title: { display: true, text: spec.y_label, color: "#8a8d99" }, ticks: { color: "#8a8d99" } },
       },
     },
-  });
-  $("pin-button").disabled = !(lastQuerySql && lastChartArgs);
-}
-
-function renderMiniChart(canvas, spec) {
-  const type = spec.chart_type === "scatter" ? "scatter" : (spec.chart_type === "bar" ? "bar" : "line");
-  new Chart(canvas.getContext("2d"), {
-    type,
-    data: { labels: spec.categories, datasets: spec.series.map(s => ({ label: s.name, data: s.values, borderWidth: 2, tension: 0.25 })) },
-    options: { responsive: true, plugins: { title: { display: true, text: spec.title, color: "#e6e6ea" }, legend: { display: false } },
-      scales: { x: { ticks: { color: "#8a8d99", maxTicksLimit: 6 } }, y: { ticks: { color: "#8a8d99" } } } },
-  });
+  };
 }
 
 // ---------- Chat (SSE over POST) ----------
@@ -126,56 +131,117 @@ function appendChatLine(cls, html) {
   return div;
 }
 
+// Deliberately minimal and deliberately restrictive: bold/italic/inline
+// code only. No markdown images, no markdown links. This isn't just a
+// feature-completeness choice — after actually seeing the model fabricate
+// a markdown image tag with garbage base64 data live during testing (rule
+// 10 in prompts.py now tells it not to), rendering is the second half of
+// that fix: even if a future model or a future prompt regression tries it
+// again, this renderer won't turn it into an actual <img>. The same
+// applies to links — an injected message body or a confabulating model
+// producing a clickable URL is exactly the kind of thing the SECURITY rule
+// in the system prompt exists to neutralize, so this is defense in depth,
+// not just formatting. Operates on already-escaped text, so any literal
+// <, >, & the model outputs stays inert; the only real HTML tags
+// introduced here are the ones we generate ourselves below.
+function renderMarkdownLite(escapedText) {
+  return escapedText
+    .replace(/!\[[^\]]*\]\(([^()]*(?:\([^()]*\))?[^()]*)\)/g, "[image omitted]")
+    .replace(/\[([^\]]*)\]\(([^()]*(?:\([^()]*\))?[^()]*)\)/g, "$1")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/(^|[^*])\*([^*]+)\*(?!\*)/g, "$1<em>$2</em>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\n/g, "<br>");
+}
+
+let questionCounter = 0;
+
+function setChatInputEnabled(enabled) {
+  $("chat-input").disabled = !enabled;
+  $("chat-send").disabled = !enabled;
+  $("chat-input").placeholder = enabled
+    ? "Ask a question about the data..."
+    : "Waiting for the current answer to finish...";
+}
+
 async function sendChatMessage(text) {
-  appendChatLine("user", escapeHtml(text));
+  const qNum = String(++questionCounter).padStart(2, "0");
+  appendChatLine("user", `<b>Q-${qNum}:</b> ${escapeHtml(text)}`);
   lastQuerySql = null;
   lastChartArgs = null;
   $("pin-button").disabled = true;
+  // Disabled for the whole turn, not just while the network request is in
+  // flight — this is the fix for the rapid-fire race a live test surfaced
+  // earlier: the backend now serializes concurrent turns on the same
+  // session with a lock (see agent/core.py), but that only stops the
+  // *data* from getting corrupted; without this, a second message sent
+  // before the first finishes would just sit invisibly queued with no
+  // feedback. Disabling here makes that impossible from the UI side, and
+  // makes the wait visible instead of silent.
+  setChatInputEnabled(false);
 
   let assistantDiv = null;
+  let assistantRawText = ""; // accumulated across token events, re-rendered as markdown each time —
+                              // markdown syntax like ** can straddle two separate SSE token chunks, so
+                              // formatting has to happen on the whole buffer, not chunk-by-chunk.
+  const answerLabel = `<b>A-${qNum}:</b> `;
   const controller = new AbortController();
 
-  let response;
   try {
-    response = await fetch(API_BASE + "/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ session_id: sessionId, message: text }),
-      signal: controller.signal,
-    });
-  } catch (e) {
-    appendChatLine("tool-error", `Connection failed: ${escapeHtml(e.message)}`);
-    return;
-  }
-  if (!response.ok || !response.body) {
-    appendChatLine("tool-error", `Chat request failed (HTTP ${response.status}).`);
-    return;
-  }
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const events = buffer.split("\n\n");
-      buffer = events.pop(); // keep the last, possibly-incomplete chunk
-      for (const raw of events) {
-        const line = raw.trim();
-        if (!line.startsWith("data:")) continue;
-        const payload = JSON.parse(line.slice(5).trim());
-        handleChatEvent(payload, () => { assistantDiv = assistantDiv || appendChatLine("assistant", ""); return assistantDiv; });
-      }
+    let response;
+    try {
+      response = await fetch(API_BASE + "/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sessionId, message: text }),
+        signal: controller.signal,
+      });
+    } catch (e) {
+      appendChatLine("tool-error", `Connection failed: ${escapeHtml(e.message)}`);
+      return;
     }
-  } catch (e) {
-    appendChatLine("tool-error", `Stream interrupted: ${escapeHtml(e.message)}`);
+    if (!response.ok || !response.body) {
+      appendChatLine("tool-error", `Chat request failed (HTTP ${response.status}).`);
+      return;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    const appendAssistantToken = (delta) => {
+      assistantDiv = assistantDiv || appendChatLine("assistant", answerLabel);
+      assistantRawText += delta;
+      assistantDiv.innerHTML = answerLabel + renderMarkdownLite(escapeHtml(assistantRawText));
+    };
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split("\n\n");
+        buffer = events.pop(); // keep the last, possibly-incomplete chunk
+        for (const raw of events) {
+          const line = raw.trim();
+          if (!line.startsWith("data:")) continue;
+          const payload = JSON.parse(line.slice(5).trim());
+          handleChatEvent(payload, appendAssistantToken);
+        }
+      }
+    } catch (e) {
+      appendChatLine("tool-error", `Stream interrupted: ${escapeHtml(e.message)}`);
+    }
+  } finally {
+    // Always re-enable, whether the turn finished cleanly, errored, or the
+    // connection dropped — a stuck-disabled input on failure would be
+    // worse than the race condition this is meant to prevent.
+    setChatInputEnabled(true);
+    $("chat-input").focus();
   }
 }
 
-function handleChatEvent(evt, getAssistantDiv) {
+function handleChatEvent(evt, appendAssistantToken) {
   switch (evt.event) {
     case "session":
       sessionId = evt.session_id;
@@ -186,7 +252,7 @@ function handleChatEvent(evt, getAssistantDiv) {
       // appendChatLine("status", `thinking (iteration ${evt.iteration})...`);
       break;
     case "token":
-      getAssistantDiv().innerHTML += escapeHtml(evt.text);
+      appendAssistantToken(evt.text);
       break;
     case "tool_call":
       appendChatLine("tool-call", `→ calling <b>${evt.name}</b>(${escapeHtml(JSON.stringify(evt.arguments))})`);
@@ -218,6 +284,7 @@ function handleChatEvent(evt, getAssistantDiv) {
 $("chat-form").addEventListener("submit", (e) => {
   e.preventDefault();
   const input = $("chat-input");
+  if (input.disabled) return; // belt-and-suspenders: input.disabled already blocks typing/Enter in every real browser, this just guards against relying on that alone
   const text = input.value.trim();
   if (!text) return;
   input.value = "";
