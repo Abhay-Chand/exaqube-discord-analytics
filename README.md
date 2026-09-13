@@ -1,6 +1,6 @@
 # Discord Analytics Agent
 
-A FastAPI + Postgres analytics app over a synthetic Discord dataset, with a
+A FastAPI + Postgres analytics Web Application over a synthetic Discord dataset, with a
 conversational agent that writes SQL, charts results, and lets you pin
 charts to a dashboard. The assessed part is the plugin architecture — see
 "Plugin architecture" below before anything else.
