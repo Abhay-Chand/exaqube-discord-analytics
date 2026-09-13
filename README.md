@@ -21,6 +21,7 @@ starts the API, and starts the frontend. Once `frontend` reports healthy:
 - Health: http://localhost:8080/health (proxied) or :8000/health (direct)
 
 To re-run just the data load (e.g. after editing the CSVs):
+
 ```
 docker compose run --rm migrate
 ```
@@ -28,13 +29,13 @@ docker compose run --rm migrate
 For a completely clean run (wipes the Postgres volume too, forcing the
 loader to run from scratch — the closest thing to a first-time reviewer's
 machine):
+
 ```
 docker compose down -v
 docker compose up --build
 ```
 
-**This has been run end-to-end for real**, on a clean `docker compose up
---build`, all four services (`db`, `migrate`, `backend`, `frontend`) coming
+**This has been run end-to-end for real**, on a clean `docker compose up --build`, all four services (`db`, `migrate`, `backend`, `frontend`) coming
 up healthy in order, the frontend served at `:8080`, chat working against a
 real OpenAI key, charts rendering, pins persisting. It wasn't clean on the
 first try — see "Bugs found and fixed during manual testing" below for
@@ -99,6 +100,7 @@ your class is what actually puts it in the registry the agent's tool list
 is built from. No router edit, no prompt edit, no core.py edit.
 
 To add one:
+
 1. Create `backend/app/plugins/my_plugin.py`.
 2. Define a pydantic `input_model` for its arguments.
 3. Subclass `Plugin`, set `name`/`description`/`input_model`, implement
@@ -122,6 +124,7 @@ give up and tell the user. Don't raise bare exceptions from `execute()` —
 they'll surface as an ugly generic error to both the model and the user.
 
 ### Why a directory scan instead of entry points
+
 Entry points earn their keep when plugins are separately-versioned,
 separately-installed packages. Every plugin here lives in one repo, one
 package, one container — a directory scan gets the "drop a file in, it's
@@ -137,6 +140,7 @@ flowchart LR
 ```
 
 ### Chaining, concretely
+
 `query` executes SQL and returns a `ResultRef` (an id + row count + a
 15-row preview) — not the full result set — to the LLM. `chart` takes a
 `ref_id` and resolves the *full* data server-side, never round-tripping it
@@ -178,6 +182,7 @@ day" reused the same ref_id from a prior turn's chart call rather than
 rebuilding it.
 
 ### What I decided not to support, and why
+
 - **Streaming progress on `query`/`chart`**: the hook exists on the base
   class (`stream_progress`), unused by either plugin, because both are a
   single round-trip at this dataset's size. Faking a progress bar would be
@@ -204,6 +209,7 @@ external CDN dependency), markdown-lite rendering, and UI-level protection
 against double-submitting a question before the first answer completes.
 
 **Cut, deliberately**:
+
 - **Excel and PowerPoint plugins.** Not implemented at all. The interface
   they'd implement is the same `Plugin` ABC `query`/`chart` use — nothing
   about the contract is chart-specific — so adding them later is exactly
@@ -221,6 +227,7 @@ against double-submitting a question before the first answer completes.
   and tested OpenAI.
 
 **What I'd do next with more time, specifically**:
+
 1. A conversation-scoped rate limit on the `query` plugin — right now
    bounded retries within one turn stop a runaway loop, but nothing stops
    a user from asking 500 expensive questions in a row. I'd add a per-
@@ -292,6 +299,7 @@ against double-submitting a question before the first answer completes.
 **Defended, and verified (not just asserted — see the commands below, all
 of which were actually run against a live Postgres, or observed live in
 the running app):**
+
 - The agent connects as `agent_ro`: `default_transaction_read_only = on`
   and `statement_timeout = '5s'` set at the *role* level in
   `schema.sql`, not just in application code. Confirmed: `INSERT` as this
@@ -355,6 +363,7 @@ the running app):**
   Confirmed via a real 404 and a real 422.
 
 **Explicitly left open:**
+
 - No rate limiting / auth on the API at all — anyone who can reach the
   container can chat with the agent or hit the data endpoints. Fine for a
   take-home; not fine for anything real. Called out again above under
@@ -384,8 +393,7 @@ report that claims nothing went wrong.
    `backend/Dockerfile` created a user via `useradd -d /app` (home
    directory `/app`) but copied `pip install --user`'s output to
    `/home/app/.local` — a directory nothing pointed at. Packages installed
-   fine at build time, then `ModuleNotFoundError: No module named
-   'asyncpg'` at runtime. Fixed by switching to a venv at a fixed path
+   fine at build time, then `ModuleNotFoundError: No module named 'asyncpg'` at runtime. Fixed by switching to a venv at a fixed path
    (`/opt/venv`), which doesn't depend on `$HOME` matching anything.
 2. **nginx served its own stock default page instead of the app's config.**
    The `COPY nginx.conf /etc/nginx/conf.d/default.conf` line was missing
