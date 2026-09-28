@@ -6,9 +6,7 @@ A professional AI-powered analytics experience for Discord community data. This 
 
 ### Video walkthrough
 
-GitHub does not render raw MP4 video tags inside a repository README, so this preview links directly to the demo video file.
-
-[![Watch demo video](demo/Screenshot%202026-09-28%20132410.png)](demo/Discord-Project.mp4)
+[demo/Discord-Project.mp4](demo/Discord-Project.mp4)
 
 ### Dashboard preview
 
