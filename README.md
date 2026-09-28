@@ -13,7 +13,7 @@ A professional AI-powered analytics experience for Discord community data. This 
 
 ### Dashboard preview
 
-![Discord Analytics dashboard preview](demo/Screenshot%202026-09-28%20132410.png)
+![Discord Analytics dashboard preview](<demo/Screenshot%202026-09-28%20132410.png>)
 
 ---
 
